@@ -1,0 +1,47 @@
+IFS=$''
+disk_id=`iris_cli -username 'uttam' -password 'Cohe$1ty' disk ls | grep "DISK ID" | awk '{print $NF}'`
+node_ip=`iris_cli -username 'uttam' -password 'Cohe$1ty' disk ls | grep "NODE IP" | awk '{print $NF}'`
+disk_mount=`iris_cli -username 'uttam' -password 'Cohe$1ty' disk ls | grep -i mount | awk '{print $NF}' | cut -d "_" -f 1 | cut -d "/" -f 6`
+disk_tier=`iris_cli -username 'uttam' -password 'Cohe$1ty' disk ls | grep "TIER" | awk '{print $NF}'`
+disk_usable_cap=`iris_cli -username 'uttam' -password 'Cohe$1ty' disk ls | grep "USABLE" | cut -d ":" -f 2`
+
+count_disk=`echo "$disk_id" | wc -l`
+
+
+echo "UNCORRECTABLE ERRORS" | awk '{printf "%83s\n", "UNCORRECTABLE ERRORS"}'
+
+echo "DISK_ID" | awk '{printf "%5s\n", "DISK_ID"}'| tr "\n" " " &&
+echo "NODE_IP" | awk '{printf "%14s\n", "NODE_IP"}' | tr "\n" " " &&
+echo "MOUNTPOINT" | awk '{printf "%12s\n", "MOUNT"}' | tr "\n" " " &&
+echo "TIER" | awk '{printf "%10s\n", "TIER"}' | tr "\n" " " &&
+echo "USABLE CAP" | awk '{printf "%14s\n", "USABLE_CAP"}' | tr "\n" " " &&
+echo "READ" | awk '{printf "%6s\n", "READ"}' | tr "\n" " " &&
+echo "WRITE" | awk '{printf "%6s\n", "WRITE"}' | tr "\n" " " &&
+echo "VERIFY" | awk '{printf "%6s\n", "VERIFY"}' | tr "\n" " " &&
+echo "DEFECT LIST" | awk '{printf "%15s\n", "DEFECT_LIST"}'
+
+echo "==================================================================================================================" 
+ 
+for (( i=1 ; i <= $count_disk ; i++ ))
+do
+
+    node_current_ip=`echo $node_ip | head -$i | tail -1`
+    disk_current_mount=`echo $disk_mount | head -$i | tail -1`
+    echo $disk_id | head -$i | tail -1 | awk '{printf "%7s\n", $disk_id}' | tr "\n" " " && 
+    echo $node_ip | head -$i | tail -1 | awk '{printf "%14s\n", $node_ip}' | tr "\n" " " && 
+    echo $disk_mount | head -$i | tail -1 | awk '{printf "%12s\n", $disk_mount}' | tr "\n" " " &&
+    echo $disk_tier | head -$i | tail -1 | awk '{printf "%10s\n", $disk_tier}' |  tr "\n" " " &&
+    echo $disk_usable_cap | head -$i | tail -1 | awk '{printf "%13s\n", $disk_usable_cap}' |  tr "\n" " " &&
+
+    uncorrec_read_err=`ssh $node_current_ip sudo smartctl -a -d scsi /dev/$disk_current_mount | grep "read:" | awk '{print $NF}'`
+    uncorrec_write_err=`ssh $node_current_ip sudo smartctl -a -d scsi /dev/$disk_current_mount | grep "write:" | awk '{print $NF}'`
+    uncorrec_verify_err=`ssh $node_current_ip sudo smartctl -a -d scsi /dev/$disk_current_mount | grep "verify:" | awk '{print $NF}'`
+    defect_list_err=`ssh $node_current_ip sudo smartctl -a -d scsi /dev/$disk_current_mount | grep "Elements in grown defect list" | awk '{print $NF}'`
+
+    echo $uncorrec_read_err | awk '{printf "%5s\n", $disk_removal_state}' |  tr "\n" " " &&
+    echo $uncorrec_write_err | awk '{printf "%5s\n", $disk_removal_state}' |  tr "\n" " " &&
+    echo $uncorrec_verify_err | awk '{printf "%5s\n", $disk_removal_state}' | tr "\n" " " &&
+    echo $defect_list_err | awk '{printf "%9s\n", $defect_list_err}'
+  
+
+done
