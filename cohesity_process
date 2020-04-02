@@ -1,0 +1,64 @@
+IFS=$' '
+
+services=`echo alerts_exec apollo_exec athena_exec bifrost_broker_exec bridge_exec bridge_proxy_ex eagle_agent_exec gandalf_server groot_exec iris_exec keychain_exec librarian_exec magneto_exec newscribe_exec nexus_exec reverse_proxy_exec rtclient_exec siren_server_exec smb2_proxy_exec statscollector_exec stats_exec storage_proxy_e tricorder_exec vault_proxy_exec yoda_exec`
+
+echo "PID" | awk '{printf "%5s\n", $"PID"}' | tr "\n" " " &&
+echo "PROCESS NAME"| awk '{printf "%18s\n", $"PROCESS NAME"}' | tr "\n" " " &&
+echo "STATE" | awk '{printf "%12s\n", $"STATE"}' | tr "\n" " " &&
+echo "CPU" | awk '{printf "%5s\n", $"CPU"}' | tr "\n" " " &&
+echo "THRDS" | awk '{printf "%7s\n", $"THREADS"}' | tr "\n" " " &&
+echo "UPTIME" | awk '{printf "%12s\n", $"UPTIME"}' | tr "\n" " " &&
+echo "CPU%" | awk '{printf "%5s\n", $"CPU%"}' | tr "\n" " " &&
+echo "MEM%" | awk '{printf "%5s\n", $"MEM%"}' | tr "\n" " " &&
+echo "VMEM_SIZE" | awk '{printf "%10s\n", $"VMEM_SIZE"}' | tr "\n" " " &&
+echo "RSS_SIZE" | awk '{printf "%10s\n", $"RSS_SIZE"}' | tr "\n" " " &&
+echo "MASTER" | awk '{printf "%15s\n", $"MASTER"}' | tr "\n" " " &&
+echo "PORT" | awk '{printf "%7s\n", $"PORT"}'
+
+echo "=========================================================================================================================="
+
+master_service=`iris_cli cluster ls-masters | grep "LOCK HOLDER NAME" | awk '{print $NF}' | sort | uniq | cut -d ":" -f 1`
+master_service_count=`echo $master_service | wc -l`
+
+for i in $services
+do
+  pid=`ps -C $i -o pid | grep -vi pid | sort -n | tail -1`
+
+  for (( j=1 ; j <= $master_service_count ; j++ )) 
+  do
+        master_list=`iris_cli cluster ls-masters | grep "LOCK HOLDER NAME" | awk '{print $NF}' | sort | uniq | cut -d ":" -f 1 | head -$j | tail -1`
+
+        if [ "$master_list" = "$i" ];
+        then
+              master_node=`iris_cli cluster ls-masters | grep "LOCK HOLDER NAME" | awk '{print $NF}' | sort | uniq | grep -i $master_list | cut -d ":" -f 2`
+              service_port=`iris_cli cluster ls-masters | grep "LOCK HOLDER NAME" | awk '{print $NF}' | sort | uniq | grep -i $master_list | cut -d ":" -f 3`
+        break
+        fi
+  done 
+
+  process_name=`prtstat $pid 2> /dev/null | grep -i process: | awk '{print $2}'`
+  process_state=`prtstat $pid 2> /dev/null | grep -i process: | awk '{print $NF}'`
+  process_cpu=`prtstat $pid 2> /dev/null | grep -i cpu# | awk '{print $2}'`
+  process_threads=`prtstat $pid 2> /dev/null | grep -i cpu# | awk '{print $NF}'`
+  process_vsize=`prtstat $pid 2> /dev/null | grep -i vsize | awk '{print $(NF-1),$NF}'`
+  process_rss_size=`prtstat $pid 2> /dev/null | grep -i rss | awk '{print $2, $3}'`
+  process_uptime=`ps -p $pid -o etime 2> /dev/null | tail -1`
+  process_cpu_util=`ps -p $pid -o %cpu 2> /dev/null | tail -1`
+  process_mem_util=`ps -p $pid -o %mem 2> /dev/null | tail -1`
+
+  echo $pid | awk '{printf "%5s\n", $pid}' | tr "\n" " " &&
+  echo $process_name | awk '{printf "%18s\n", $process_name}' | tr "\n" " " &&
+  echo $process_state | awk '{printf "%12s\n", $process_state}' | tr "\n" " " &&
+  echo $process_cpu | awk '{printf "%5s\n", $process_cpu}' | tr "\n" " " &&
+  echo $process_threads | awk '{printf "%7s\n", $process_threads}' | tr "\n" " " &&
+  echo $process_uptime | awk '{printf "%12s\n", $process_uptime}' | tr "\n" " " &&
+  echo $process_cpu_util | awk '{printf "%5s\n", $process_cpu_util}' | tr "\n" " " &&
+  echo $process_mem_util | awk '{printf "%5s\n", $process_mem_util}' | tr "\n" " " &&
+  echo $process_vsize | awk '{printf "%10s\n", $process_vsize}' | tr "\n" " " &&
+  echo $process_rss_size | awk '{printf "%10s\n", $process_vsize}' | tr "\n" " " &&
+  echo $master_node | awk '{printf "%15s\n", $master_node}' | tr "\n" " " &&
+  echo $service_port | awk '{printf "%7s\n", $service_port}'
+  
+  master_node=' '
+  service_port=' '
+done
