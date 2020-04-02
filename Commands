@@ -1,0 +1,35 @@
+CPU and Memory information
+
+
+echo "CPU Statistics on all 3 Nodes"
+echo -e "-----------------------------\n"
+
+allssh.sh mpstat | grep -v ^L
+
+echo "Memory Statistics on all 3 Nodes"
+
+product_helper --op=LIST_DIMMS | grep -i install; echo -e "\n"
+
+allssh.sh 'echo "Memory in GB" ; echo -e "=======================================" ; free -g ; echo -e "Detail Statistics\n" ; sudo vmstat -s -S M | egrep -i "=====|memory|swap cache"'
+
+dstat -c --top-cpu --top-mem -dnmr 2 5
+
+[cohesity@blr-sre-clu2-bqkp72900337-node-1 ~]$ sudo vmstat -s -S M | egrep -i 'memory|swap cache'
+        64168 M total memory
+        19554 M used memory
+        36623 M active memory
+         9273 M inactive memory
+         9714 M free memory
+         1565 M buffer memory
+        33334 M swap cache
+
+[cohesity@blr-sre-clu2-bqkp72900337-node-1 ~]$ dstat -c --top-cpu --top-mem -dnmr 2 5
+----total-cpu-usage---- -most-expensive- --most-expensive- -dsk/total- -net/total- ------memory-usage----- --io/total-
+usr sys idl wai hiq siq|  cpu process   |  memory process | read  writ| recv  send| used  buff  cach  free| read  writ
+  6   2  91   0   0   0|bridge_exec  1.4|qemu-kvm    7708M|3370k   12M|   0     0 |29.3G 1567M 27.2G 4713M|33.1   997
+  5   2  93   0   0   0|qemu-kvm     2.8|qemu-kvm    7708M|  15M 5685k|3667k 3136k|29.3G 1567M 27.2G 4716M|81.5   681
+  5   1  94   0   0   0|qemu-kvm     3.5|qemu-kvm    7708M|2048B 7686k|3261k 3162k|29.3G 1567M 27.2G 4717M|0.50   500
+  6   1  93   0   0   0|qemu-kvm     3.4|qemu-kvm    7708M|9308k   13M|4045k 3450k|29.3G 1567M 27.2G 4712M|39.0  1162
+  7   2  90   1   0   0|newscribe_exe2.2|qemu-kvm    7708M|  14M   31M|5457k 5548k|29.3G 1567M 27.3G 4713M| 108  2459
+  5   2  92   0   0   0|newscribe_exe2.0|qemu-kvm    7708M|  11M   32M|7248k 5293k|29.3G 1567M 27.3G 4709M|22.0  2052
+[cohesity@blr-sre-clu2-bqkp72900337-node-1 ~]$
