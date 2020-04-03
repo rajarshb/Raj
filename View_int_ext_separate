@@ -68,7 +68,7 @@ do
 
       temp_view_id_internal=`echo $view_id_internal | head -$i | tail -1`
 
-      view_col=`cat /tmp/view_list 2> /dev/null | awk '{print $1}' | grep $temp_view_id_internal`
+      view_col=`cat /tmp/view_list.txt 2> /dev/null | awk '{print $1}' | grep $temp_view_id_internal`
 
       if [ -z "$view_col" ];
       then
