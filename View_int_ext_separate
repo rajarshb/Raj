@@ -1,0 +1,94 @@
+IFS=$''
+
+rm /tmp/view_list.txt 2> /dev/null
+touch /tmp/view_list.txt
+
+rm /tmp/view_head.txt 2> /dev/null
+touch /tmp/view_head.txt
+
+rm /tmp/view_list_internal.txt 2> /dev/null
+touch /tmp/view_list_internal.txt
+
+view_name=`iris_cli -username 'uttam' -password 'Cohe$1ty' view ls | grep "VIEW NAME" | awk '{print $NF}'`
+view_id=`iris_cli -username 'uttam' -password 'Cohe$1ty' view ls | grep "VIEW ID" | awk '{print $NF}'`
+view_protocol=`iris_cli -username 'uttam' -password 'Cohe$1ty' view ls | grep "PROTOCOL" | awk '{print $NF}'`
+view_creation=`iris_cli -username 'uttam' -password 'Cohe$1ty' view ls | grep "CREATION TIME" | awk '{print $(NF-2),$(NF-1)}'`
+
+num_views=`echo $view_name | wc -l`
+
+view_name_internal=`iris_cli -username 'uttam' -password 'Cohe$1ty' view ls include-internal=true | grep "VIEW NAME" | awk '{print $NF}'`
+view_id_internal=`iris_cli -username 'uttam' -password 'Cohe$1ty' view ls include-internal=true | grep "VIEW ID" | awk '{print $NF}'`
+view_protocol_internal=`iris_cli -username 'uttam' -password 'Cohe$1ty' view ls include-internal=true | grep "PROTOCOL" | awk '{print $NF}'`
+view_creation_internal=`iris_cli -username 'uttam' -password 'Cohe$1ty' view ls include-internal=true | grep "CREATION TIME" | awk '{print $(NF-2),$(NF-1)}'`
+
+num_views_internal=`echo $view_name_internal | wc -l`
+
+internal_view_count=`expr $num_views_internal - $num_views`
+
+echo "Total Number of Views: " $num_views_internal
+echo "Total Number of External Views: " $num_views
+echo "Total Number of Internal Views: " $internal_view_count
+
+
+echo -e "\nSorting the External View Table based on size..........."
+
+echo "VIEW_ID" | awk '{printf "%14s\n", "VIEW_ID"}'| tr "\n" " " >> /tmp/view_head.txt &&
+echo "VIEW NAME>" | awk '{printf "%60s\n", "VIEW NAME"}' | tr "\n" " " >> /tmp/view_head.txt &&
+echo "CREATION TIME" | awk '{printf "%22s\n", "CREATION TIME"}' | tr "\n" " " >> /tmp/view_head.txt &&
+echo "SIZE(GB)" | awk '{printf "%10s\n", "SIZE(GB)"}' >> /tmp/view_head.txt
+
+echo "==============================================================================================================" >> /tmp/view_head.txt
+echo "[EXTERNAL VIEWS]" >> /tmp/view_head.txt
+
+for (( i=1 ; i <=$num_views_internal ; i++ ))
+do
+
+  if [ "$i" -le "$num_views" ];
+  then
+
+      temp_view_id=`echo $view_id | head -$i | tail -1`
+      echo $temp_view_id | awk '{printf "%14s\n", $temp_view_id}' | tr "\n" " " >> /tmp/view_list.txt &&
+      echo $view_name | head -$i | tail -1 | awk '{printf "%60s\n", $view_name}' | tr "\n" " " >> /tmp/view_list.txt &&
+      echo $view_creation | head -$i | tail -1 | awk '{printf "%22s\n", $view_creation}' | tr "\n" " " >> /tmp/view_list.txt &&
+
+      chunk_size_bytes=`st.sh view_usage read_int $temp_view_id --format=1 --proto1=cohesity.bridge.view.ViewUsageProto 2> /dev/null | grep -i chunk_physical_bytes | awk '{print $NF}'`
+
+      chunk_size_gbytes=`expr $chunk_size_bytes / 1024 / 1024 / 1024 2> /dev/null`
+      echo $chunk_size_gbytes | awk '{printf "%10s\n", $chunk_size_gbytes}' >> /tmp/view_list.txt
+  fi
+
+  if [ "$i" -eq "$num_views" ];
+  then
+      echo -e "\n==============================================================================================================" >> /tmp/view_list.txt
+      echo "[INTERNAL VIEWS]" >> /tmp/view_list.txt
+  fi
+
+  if [ "$i" -gt "$num_views" ];
+  then
+
+      temp_view_id_internal=`echo $view_id_internal | head -$i | tail -1`
+
+      view_col=`cat /tmp/view_list 2> /dev/null | awk '{print $1}' | grep $temp_view_id_internal`
+
+      if [ -z "$view_col" ];
+      then
+
+        echo $temp_view_id_internal | awk '{printf "%14s\n", $temp_view_id_internal}' | tr "\n" " " >> /tmp/view_list_internal.txt &&
+        echo $view_name_internal | head -$i | tail -1 | awk '{printf "%60s\n", $view_name_internal}' | tr "\n" " " >> /tmp/view_list_internal.txt &&
+        echo $view_creation_internal | head -$i | tail -1 | awk '{printf "%22s\n", $view_creation_internal}' | tr "\n" " " >> /tmp/view_list_internal.txt &&
+
+        chunk_size_bytes_internal=`st.sh view_usage read_int $temp_view_id_internal --format=1 --proto1=cohesity.bridge.view.ViewUsageProto 2> /dev/null | grep -i chunk_physical_bytes | awk '{print $NF}'`
+
+        chunk_size_gbytes_internal=`expr $chunk_size_bytes_internal / 1024 / 1024 / 1024 2> /dev/null`
+        echo $chunk_size_gbytes_internal | awk '{printf "%10s\n", $chunk_size_gbytes_internal}' >> /tmp/view_list_internal.txt
+      fi
+  fi
+done
+
+cat /tmp/view_head.txt
+cat /tmp/view_list.txt
+cat /tmp/view_list_internal.txt
+
+rm /tmp/view_list.txt 2> /dev/null
+rm /tmp/view_head.txt 2> /dev/null
+rm /tmp/view_list_internal.txt 2> /dev/null
